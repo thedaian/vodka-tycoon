@@ -5,7 +5,10 @@ function randomInt(min, max) {
 	return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-/* Controllers */
+/* Controllers 
+	This is the main (and only) controller for Vodka Tycoon.
+	This handles all the player actions, as well as contains various scope variables and a few other elements
+*/
 function vodkaTycoon( $scope, $timeout, $log ) {
 	/* INITIALIZATION */
     $scope.money = 200;
@@ -43,6 +46,7 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 		cups: PRICE_CUPS
 	};
 	
+	//Initialises variables for the next "day". This gets called whenever we are starting the new day (usually after the user clicks "OK" to close out of the finance window bit....
 	function initDay()
 	{
 		$scope.showIncome = false;
@@ -60,7 +64,11 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 	
 	initDay();
 	
-	/* PLAYER ACTIONS */	
+	/* PLAYER ACTIONS */
+	/* Functions that are tied to the scope can be called in the HTML (see the index.html for examples) this basically means you can do something like ng-click=function() and it's all handled nicely
+	
+	The start day function gets the process of the simulation itself running
+	*/
 	$scope.startDay = function()
 	{
 		if(outOfCups() || outOfVodka() || ($scope.price === 0) )
@@ -73,6 +81,7 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 		runTime();
 	}
 	
+	/* Actually does the buying of cups and vodka. */
 	$scope.purchase = function()
 	{
 		if($scope.buy.cant)
@@ -100,6 +109,7 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 	var STOP_HOUR = 7;
 	var timer;
 	
+	//turns bottles into "pours", effectively forcing the player to use those pours or they get lost. bottles are saved per day.
 	function pour()
 	{
 		if(!outOfBottles())
@@ -109,6 +119,7 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 		}
 	}
 	
+	//checks whether a customer will actually buy some vodka at the current price (based on weather), and if so, purchases a shot of vodka
 	function customer(force)
 	{
 		var force = force || false;
@@ -121,13 +132,14 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 			{
 				pour();
 			}
-		}		
+		}
 	}
 	
+	//does exactly what it says. the possible "max price" depends highly on the current temperature, with low temps having a higher max price
 	function checkWeatherToPrice(force)
 	{
 		if(force)
-			return true;
+			return ($scope.price < 10);
 		
 		var maxPrice = 0;
 		if($scope.weather.current < -5)
@@ -150,6 +162,7 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 		return (maxPrice >= $scope.price);
 	}
 	
+	//simply advances time forward. every hour, the temp drops a bit, and a customer WILL buy vodka (provided the price is still below 10)
 	function advanceTime()
 	{
 		$scope.time.minute += 5;
@@ -166,6 +179,7 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 		}
 	}
 	
+	//this is where the main game loop takes place.
 	function runTime()
 	{
 		if(randomInt(0, 100) <= CHANCE_OF_CUSTOMER)
@@ -178,10 +192,12 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 			endDay();
 		}
 		if($scope.running) {
+			//angularJS $timeout function. works similar to window.timeout, but avoids any cross platform issues, and is useful for unit testing
 			timer = $timeout(runTime, 250); //26.25 seconds total
 		}
 	}
 	
+	//stops the game, and performs all the income/profit display stuff
 	function endDay()
 	{
 		$scope.running = false;
@@ -193,6 +209,8 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 		$scope.showIncome = true;
 	}
 	
+	//does the actual calculating of the income and expenses and such
+	//this is all stored in a scope variable that's an array of objects, which is instantly updated on the client html by angular
 	function calculateProfit()
 	{
 		var i = $scope.time.day - 1;
@@ -201,6 +219,7 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 		$scope.profit[i].hourly = $scope.profit[i].income/( (24 - STOP_HOUR) - 9);
 	}
 	
+	//mostly basic sanity checks to prvent abuse or to stop the day early if one of the supplies runs out
 	function outOfVodka()
 	{
 		return ( ($scope.vodka.pours === 0) && ($scope.vodka.bottles === 0) );
@@ -218,11 +237,13 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 		return (($scope.price <= 0) || ($scope.price > 10));
 	}
 	
+	//because we use the sanity check functions in the controller itself, we declare them above, then attatch them to the scope object here, so we can use them in the html template as well
 	$scope.outOfVodka = outOfVodka;
 	$scope.outOfBottles = outOfBottles;
 	$scope.outOfCups = outOfCups;
 	$scope.priceOutOfBounds = priceOutOfBounds; 
 	
+	//this allows us to run a function (recalc cost in this case) whenever a scope variable changes. in this case, we display the total cost of the purchase whenever one value or the other changes
 	$scope.$watch('buy.vodka', recalcCost);
 	$scope.$watch('buy.cups', recalcCost);
 	
@@ -233,8 +254,11 @@ function vodkaTycoon( $scope, $timeout, $log ) {
 	}
 	
 }
+//in case the code is ever minified, we need to $inject the correct variables into the controller (basically, the services the controller uses when declaring it above). This is mostly due to IE, but it's generally good practice
 vodkaTycoon.$inject = ['$scope', '$timeout', '$log'];
 
+//filters are useful for display stuff. such as converting C to F, or converting objects into a single string. they should ideally be fairly simple functions, though, as they get run twice on every page load
+//use directives for more complex functionality
 angular.module('app', []).filter('tof', function() {
 	return function(input) {
 		return Math.floor(input * 1.8 + 32) + "°F";
