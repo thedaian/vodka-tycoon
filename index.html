@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+<head>
+	<!-- date created: 28/04/2013 13:30 -->
+	<title>Vodka Tycoon</title>
+	<script type="text/javascript" src="script/angular.min.js"></script>
+	<script type="text/javascript" src="script/game.js"></script>
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    <link href="bootstrap/css/bootstrap.theme.min.css" rel="stylesheet" media="screen">
+	<link href="bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
+	<style>
+	.centre {
+		text-align: center;
+	}
+	
+	.hover .info {
+		display: none;
+	}
+	
+	.hover:hover .info {
+		position: absolute;
+		display: inline-block;
+		width: 200px;
+		margin-left: 32px;
+		padding-right: 14px;
+		z-index: 99;
+	}
+	
+	.container {
+		position: relative;
+	}
+	
+	#income_report {
+		position: absolute;
+		left: 5%;
+		top: 80px;
+		width: 80%;
+		background-color: #121417;
+		background-image: -moz-linear-gradient(top,#060606,#252a30);
+		background-image: -webkit-gradient(linear,0 0,0 100%,from(#060606),to(#252a30));
+		background-image: -webkit-linear-gradient(top,#060606,#252a30);
+		background-image: -o-linear-gradient(top,#060606,#252a30);
+		background-image: linear-gradient(to bottom,#060606,#252a30);
+		background-repeat: repeat-x;
+		filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff060606',endColorstr='#ff252a30',GradientType=0);
+		z-index: 100;
+		padding: 5px 20px 20px;
+		border: 1px solid #999;
+	}
+	</style>
+</head>
+
+<body ng-app="app">
+<div ng-controller="vodkaTycoon" class="container">
+	<div ng-show="showIncome" id="income_report">
+		<h3 class="centre">Per Day Income</h3>
+		<table class="table table-striped .table-bordered .table-hover">
+			<tr><th></th><th>Initial</th><th>End of day</th><th>Gains</th><th>Hourly Rate</th></tr>
+			<tr ng-repeat="row in profit" ng-class="{ 'error': row.income < 0, 'success': row.income > 100 }">
+				<td>Day: {{$index + 1}}</td>
+				<td>{{row.start | currency}}</td>
+				<td>{{row.end | currency}}</td>
+				<td>{{row.income | currency}}</td>
+				<td>{{row.hourly | currency}}/hr</td>
+			</tr>
+		</table>
+		<div class="centre">
+			<button ng-click="nextDay()" class="btn btn-inverse">Continue to next day</button>
+		</div>
+	</div>
+	<div class="row">
+		<div class="span12">
+			<h1 class="centre">Vodka Tycoon</h1>
+			<p>You are an illegal Moscow Vodka Merchant. Every night, you enter the streets of Moscow to sell thirsty patrons of Russian bars Vodka. Due to the nature of your operations, you have a limit to how much vodka you can safely store every night. Buy supplies of vodka and the cups to sell them in, and do your best to make a high profit. Your hourly rate is always calculated off of 8 hours, even if you run out of vodka or cups before a full 8 hours of sales.</p>
+			<p>This game was made over the course of 6 hours for <a href="http://www.ludumdare.com/compo/">Ludum Dare #26</a>, theme Minimalism, by <a href="http://www.barchok.com/">Todd Barchok</a>. Due to the theme being a repeat of my very first <a href="http://www.ludumdare.com/compo/category/ld11/">Ludum Dare event</a>, I decided that my theme was actually Potato. The end result is that I've managed to create a minimal tycoon game about selling potato based liquor.
+			</p>
+		</div>
+	</div>
+<hr>
+	<div class="row">
+		<div class="span6">
+			<p><i class="icon-heart icon-white"></i> Money: <span class="text-info">{{money | currency}}</span></p>
+			<p><i class="icon-globe icon-white"></i> Forecast: <span class="text-info">{{weather.forecast}}°C</span> <span class="text-muted">{{weather.forecast | tof}}</span>
+				<span class="icon-info-sign icon-white hover"><span class="info alert alert-info">You want set your price relative to the forecast. No one will spend more than {{'5' | currency}} per shot, and only if it's going to be -5°C. The good news is that it gets colder every hour.</span></span>
+			</p>
+			<p><i class="icon-tint icon-white"></i> Vodka Bottles: <span class="text-info">{{vodka.bottles}}</span>
+				<span class="icon-info-sign icon-white hover"><span class="info alert alert-info">Bottles of vodka cost {{cost.vodka | currency}} each, and hold 16 shots. You have to get dump half your vodka bottles every day or else the cops will discover your operation, plus, you lose any remaining shots.</span></span></p>
+			<p><i class="icon-glass icon-white"></i> Cups: <span class="text-info">{{cups}}</span>
+				<span class="icon-info-sign icon-white hover"><span class="info alert alert-info">Cups are cheap, and only cost {{cost.cups | currency}} per dozen. You keep any remaining cups from the previous night.</span></span></p>
+		</div>
+		<div class="span6">
+			<form ng-submit="purchase()" class="form-horizontal">
+				<div class="control-group">
+					<label  class="control-label" for="buyvodka">Buy Vodka</label>
+					<div class="controls">
+						<input ng-model="buy.vodka" id="buyvodka" type="number" class="input-small">
+						<span class="add-on"> bottles.  <span class="icon-info-sign icon-white hover"><span class="info alert alert-info">16 shots, {{cost.vodka | currency}} per bottle.</span></span></span>
+					</div>
+				</div>
+				
+				<div class="control-group">
+					<label  class="control-label" for="buycups">Buy Cups</label>
+					<div class="controls">
+						<input ng-model="buy.cups" id="buycups" type="number" class="input-small">
+						<span class="add-on"> dozen. <span class="icon-info-sign icon-white hover"><span class="info alert alert-info">{{cost.cups | currency}} per dozen.</span></span></span>
+					</div>
+				</div>
+				
+				<div class="control-group">
+					<label class="control-label" for="setprice">Set Price $</label>
+					<div class="controls">
+						<input ng-model="buy.price" id="setprice" type="number" class="input-small" step="0.1">
+						<span class="add-on"> per shot.</span>
+					</div>
+				</div>
+				
+				<div class="control-group">
+					<div class="control-label" ng-class="{ 'text-error': buy.cant }">Total: {{buy.total | currency}}</div>
+					<div class="controls">
+						<button class="btn btn-inverse" ng-disabled="buy.cant || running">Purchase!</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+	
+	<div class="row">
+		<div class="span12">
+			<p><i class="icon-time icon-white"></i> Current Time: <span class="text-info">{{time | easyTime}}</span></p>
+			<p><i class="icon-tint icon-white"></i> Shots remaining: <span class="text-info">{{vodka.pours}}</span></p>
+			<p><i class="icon-globe icon-white"></i> Current Temperature: <span class="text-info">{{weather.current}}°C</span> <span class="text-muted">{{weather.current | tof}}</span></p>
+			<p><i class="icon-heart icon-white"></i> Price: <span class="text-info">{{price | currency}}</span></p>
+		</div>
+	</div>
+	
+	<div class="row">
+		<div class="span12 centre">
+			<div ng-show="outOfBottles()" class="text-warning">Out of vodka bottles!</div>
+			<div ng-show="outOfVodka()" class="text-error">Out of vodka!</div>
+			<div ng-show="outOfCups()" class="text-error">Out of cups!</div>
+			<div ng-show="priceOutOfBounds()" class="text-error">Price is too low or too high!</div>
+			<button class="btn btn-inverse" ng-click="startDay()" ng-disabled="outOfVodka() || outOfCups() || running">Start the night!</button>
+		</div>
+	</div>
+	
+</div>
+
+</body>
+</html>
